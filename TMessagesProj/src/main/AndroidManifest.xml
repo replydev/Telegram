@@ -113,6 +113,12 @@
     >
         <!-- usesCleartextTraffic for browser supporting opening http:// links -->
 
+        <!-- Disable Firebase startup and delivery while retaining upstream SDK code. -->
+        <provider android:name="com.google.firebase.provider.FirebaseInitProvider" tools:node="remove" />
+        <receiver android:name="com.google.firebase.iid.FirebaseInstanceIdReceiver" android:enabled="false" tools:replace="android:enabled" />
+        <service android:name="com.google.firebase.messaging.FirebaseMessagingService" android:enabled="false" tools:replace="android:enabled" />
+        <service android:name="org.telegram.messenger.GcmPushListenerService" android:enabled="false" />
+
         <activity-alias
             android:enabled="true"
             android:name="org.telegram.messenger.DefaultIcon"

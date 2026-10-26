@@ -397,6 +397,9 @@ public class ApplicationLoader extends Application {
     }
 
     private void initPushServices() {
+        if (BuildVars.DISABLE_FIREBASE) {
+            return;
+        }
         AndroidUtilities.runOnUIThread(() -> {
             if (getPushProvider().hasServices()) {
                 getPushProvider().onRequestPushToken();

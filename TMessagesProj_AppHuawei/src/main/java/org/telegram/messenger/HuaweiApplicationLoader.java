@@ -13,6 +13,9 @@ public class HuaweiApplicationLoader extends ApplicationLoader {
 
     @Override
     protected PushListenerController.IPushListenerServiceProvider onCreatePushProvider() {
+        if (BuildVars.DISABLE_FIREBASE) {
+            return super.onCreatePushProvider();
+        }
         if (PushListenerController.GooglePushListenerServiceProvider.INSTANCE.hasServices()) {
             HmsMessaging.getInstance(this).setAutoInitEnabled(false);
             FirebaseMessaging.getInstance().setAutoInitEnabled(true);

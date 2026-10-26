@@ -47,6 +47,9 @@ public class PushListenerController {
     private static CountDownLatch countDownLatch = new CountDownLatch(1);
 
     public static void sendRegistrationToServer(@PushType int pushType, String token) {
+        if (BuildVars.DISABLE_FIREBASE && pushType == PUSH_TYPE_FIREBASE) {
+            return;
+        }
         Utilities.stageQueue.postRunnable(() -> {
             ConnectionsManager.setRegId(token, pushType, SharedConfig.pushStringStatus);
             if (token == null) {
@@ -1801,6 +1804,9 @@ public class PushListenerController {
 
         @Override
         public void onRequestPushToken() {
+            if (BuildVars.DISABLE_FIREBASE) {
+                return;
+            }
             String currentPushString = SharedConfig.pushString;
             if (!TextUtils.isEmpty(currentPushString)) {
                 if (BuildVars.DEBUG_PRIVATE_VERSION && BuildVars.LOGS_ENABLED) {

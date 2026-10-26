@@ -1607,7 +1607,7 @@ public class MessagesController extends BaseController implements NotificationCe
         preloadFeaturedStickers = mainPreferences.getBoolean("preloadFeaturedStickers", false);
         youtubePipType = mainPreferences.getString("youtubePipType", "disabled");
         keepAliveService = mainPreferences.getBoolean("keepAliveService", false);
-        backgroundConnection = mainPreferences.getBoolean("backgroundConnection", false);
+        backgroundConnection = BuildVars.DISABLE_FIREBASE || mainPreferences.getBoolean("backgroundConnection", false);
         promoDialogId = mainPreferences.getLong("proxy_dialog", 0);
         nextPromoInfoCheckTime = mainPreferences.getInt("nextPromoInfoCheckTime", 0);
         promoDialogType = mainPreferences.getInt("promo_dialog_type", 0);
@@ -2987,7 +2987,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     break;
                 }
                 case "background_connection": {
-                    if (value.value instanceof TLRPC.TL_jsonBool) {
+                    if (!BuildVars.DISABLE_FIREBASE && value.value instanceof TLRPC.TL_jsonBool) {
                         TLRPC.TL_jsonBool bool = (TLRPC.TL_jsonBool) value.value;
                         if (bool.value != backgroundConnection) {
                             backgroundConnection = bool.value;
@@ -16182,6 +16182,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void registerForPush(@PushListenerController.PushType int pushType, String regid) {
+        if (BuildVars.DISABLE_FIREBASE && pushType == PushListenerController.PUSH_TYPE_FIREBASE) {
+            return;
+        }
         if (TextUtils.isEmpty(regid) || registeringForPush || getUserConfig().getClientUserId() == 0) {
             return;
         }

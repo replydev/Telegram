@@ -273,6 +273,9 @@ public class ConnectionsManager extends BaseController {
     }
 
     private String getRegId() {
+        if (BuildVars.DISABLE_FIREBASE && SharedConfig.pushType == PushListenerController.PUSH_TYPE_FIREBASE) {
+            return "__FIREBASE_DISABLED__";
+        }
         String pushString = SharedConfig.pushString;
         if (!TextUtils.isEmpty(pushString) && SharedConfig.pushType == PushListenerController.PUSH_TYPE_HUAWEI) {
             pushString = "huawei://" + pushString;
@@ -292,7 +295,7 @@ public class ConnectionsManager extends BaseController {
         if (preferences.contains("pushConnection")) {
             return preferences.getBoolean("pushConnection", true);
         } else {
-            return MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("backgroundConnection", false);
+            return BuildVars.DISABLE_FIREBASE || MessagesController.getMainSettings(UserConfig.selectedAccount).getBoolean("backgroundConnection", false);
         }
     }
 

@@ -25,6 +25,8 @@ public class BuildVars {
     public static boolean CHECK_UPDATES = true;
     // Fork policy: skip sponsored content requests in chats, videos and search.
     public static final boolean DISABLE_SPONSORED_CONTENT = true;
+    // Fork policy: use Telegram's background connection instead of Firebase.
+    public static final boolean DISABLE_FIREBASE = true;
     public static boolean NO_SCOPED_STORAGE = Build.VERSION.SDK_INT <= 29;
     public static String BUILD_VERSION_STRING = BuildConfig.BUILD_VERSION_STRING;
 

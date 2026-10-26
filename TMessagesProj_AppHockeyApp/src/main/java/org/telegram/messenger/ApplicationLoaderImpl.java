@@ -44,7 +44,7 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     protected void startAppCenterInternal(Activity context) {
-        if (org.telegram.messenger.BuildConfig.DEBUG) {
+        if (BuildVars.DISABLE_FIREBASE || org.telegram.messenger.BuildConfig.DEBUG) {
             return;
         }
         try {
@@ -130,6 +130,9 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
     }
 
     protected void appCenterLogInternal(Throwable e) {
+        if (BuildVars.DISABLE_FIREBASE) {
+            return;
+        }
         try {
             FirebaseCrashlytics.getInstance().recordException(e);
         } catch (Throwable recordException) {
