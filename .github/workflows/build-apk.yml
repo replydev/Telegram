@@ -1,0 +1,97 @@
+name: Build PersonalGram APK
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: APK architecture (ARM64 fits most current phones)
+        type: choice
+        options: [arm64-v8a, universal]
+        default: arm64-v8a
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      APP_NAME: ${{ vars.APP_NAME || 'PersonalGram' }}
+      APP_PACKAGE: ${{ vars.APP_PACKAGE || 'org.personalgram.messenger' }}
+      APK_ARCHITECTURE: ${{ inputs.architecture || 'arm64-v8a' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure credentials, branding and signing key
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          python3 .github/scripts/configure-apk.py
+          keytool -list -keystore TMessagesProj/config/release.keystore \
+            -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" > /dev/null
+
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install Android build tools
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' \
+            'ndk;27.2.12479018' 'cmake;3.22.1'
+          sudo apt-get update -qq
+          sudo apt-get install -y nasm
+
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          abi_args=()
+          if [[ "$APK_ARCHITECTURE" != universal ]]; then
+            abi_args+=("-Pandroid.injected.build.abi=$APK_ARCHITECTURE")
+          fi
+          ./gradlew :TMessagesProj_App:assembleAfatRelease \
+            --no-daemon --no-parallel --max-workers=2 --console=plain \
+            '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g' \
+            "-PAPP_PACKAGE=$APP_PACKAGE" \
+            "-PRELEASE_STORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" \
+            "-PRELEASE_KEY_ALIAS=$ANDROID_KEY_ALIAS" \
+            "-PRELEASE_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" \
+            "${abi_args[@]}"
+
+      - name: Verify APK signature
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose \
+            TMessagesProj_App/build/outputs/apk/afat/release/app.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: PersonalGram-${{ github.run_number }}-${{ env.APK_ARCHITECTURE }}
+          path: TMessagesProj_App/build/outputs/apk/afat/release/app.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f TMessagesProj/config/release.keystore
