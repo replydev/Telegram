@@ -72,6 +72,7 @@ jobs:
           ./gradlew :TMessagesProj_App:assembleAfatRelease \
             --no-daemon --no-parallel --max-workers=2 --console=plain \
             '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g' \
+            -Pandroid.injected.testOnly=false \
             "-PAPP_PACKAGE=$APP_PACKAGE" \
             "-PRELEASE_STORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" \
             "-PRELEASE_KEY_ALIAS=$ANDROID_KEY_ALIAS" \
@@ -89,6 +90,12 @@ jobs:
           echo "Verifying ${apks[0]}"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose \
             "${apks[0]}"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest print \
+            "${apks[0]}" > "$RUNNER_TEMP/apk-manifest.xml"
+          if grep -q 'android:testOnly="true"' "$RUNNER_TEMP/apk-manifest.xml"; then
+            echo '::error::APK is marked testOnly and cannot be installed normally'
+            exit 1
+          fi
           mkdir -p "$RUNNER_TEMP/apk"
           cp "${apks[0]}" "$RUNNER_TEMP/apk/PersonalGram.apk"
 
